@@ -1,12 +1,15 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { MongoClient } from "mongodb";
+import mongoose from "mongoose";
 import AuthRouter from "./router/Auth";
+import SchoolRouter from "./router/School";
+import { auth } from "./middleware/Auth";
+import os from "os";
+import cluster from "cluster";
 dotenv.config();
-import db from "./db/connect";
 
-const client = new MongoClient(process.env.MONGO_URI as string);
+const numCpu = os.cpus().length;
 
 const app = express();
 app.use(express.json());
@@ -14,30 +17,34 @@ app.use(express.json());
 app.use(cors());
 
 app.get("/", async (req, res) => {
-  const coll = db.collection("Users");
-  const data = await coll
-    .find({
-      firstname: "Ginelle",
-    })
-    .toArray();
-  console.log(data);
   res.status(200).send("testing");
 });
 
-app.use("/api_v1", AuthRouter);
+app.use("/api_v1/auth", AuthRouter);
+app.use("/api_v1/school", auth, SchoolRouter);
 
 const PORT = process.env.PORT || 3000;
 
 const main = async () => {
   try {
-    await client.connect();
-    console.log("Connected successfully to db");
+    await mongoose.connect(process.env.MONGO_URI as string);
+    console.log("Connected successfully to dbs");
+
     app.listen(PORT, () => {
-      console.log("server is listing on " + PORT);
+      console.log(`server ${process.pid} is listing on ` + PORT);
     });
   } catch (error) {
     console.log(error);
   }
 };
 
-main();
+if (cluster.isPrimary) {
+  for (let i = 0; i < numCpu; i++) {
+    cluster.fork();
+  }
+  cluster.on("exit", () => {
+    cluster.fork();
+  });
+} else {
+  main();
+}

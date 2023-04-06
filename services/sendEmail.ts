@@ -19,7 +19,7 @@ let sendEmail = (recipientEmail: string, otp: string) => {
       Body: {
         Html: {
           Charset: "UTF-8",
-          Data: `<h2>Your One Time Password is ${otp}</h2>`,
+          Data: `<h2>Your One Time Password Classklap login is ${otp}</h2>`,
         },
       },
       Subject: {
